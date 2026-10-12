@@ -462,6 +462,21 @@ body {
   z-index: 50;
   overflow: hidden;
   animation: slide-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 0.22s ease, transform 0.22s ease, background 0.22s ease, backdrop-filter 0.22s ease;
+}
+
+/* While dragging a slider, hide/minimize Studio UI so user can observe real-time rendering unobstructed */
+.control-panel-drawer.studio-dragging {
+  opacity: 0.08 !important;
+  backdrop-filter: blur(0px) !important;
+  -webkit-backdrop-filter: blur(0px) !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+  background: transparent !important;
+}
+
+.control-panel-drawer.studio-dragging:hover {
+  opacity: 0.2 !important;
 }
 
 .drawer-drag-handle {
@@ -641,8 +656,18 @@ body {
   transition: transform 0.1s ease;
 }
 
-.custom-range::-webkit-slider-thumb:hover {
-  transform: scale(1.2);
+.custom-range::-webkit-slider-thumb:hover,
+.custom-range:active::-webkit-slider-thumb {
+  transform: scale(1.3);
+  box-shadow: 0 0 16px var(--color-primary), 0 0 24px var(--color-primary);
+}
+
+.studio-dragging .control-group {
+  opacity: 0.15;
+}
+
+.studio-dragging .control-group:has(.custom-range:active) {
+  opacity: 0.95;
 }
 
 /* Selects and Inputs */

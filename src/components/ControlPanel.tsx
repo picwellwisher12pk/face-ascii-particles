@@ -39,11 +39,43 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<TabType>('style');
+  const [isDraggingSlider, setIsDraggingSlider] = useState<boolean>(false);
+
+  // Global listener while dragging to ensure release is caught anywhere
+  React.useEffect(() => {
+    if (!isDraggingSlider) return;
+
+    const handlePointerUp = () => {
+      setIsDraggingSlider(false);
+    };
+
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+    window.addEventListener('mouseup', handlePointerUp);
+    window.addEventListener('touchend', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+      window.removeEventListener('mouseup', handlePointerUp);
+      window.removeEventListener('touchend', handlePointerUp);
+    };
+  }, [isDraggingSlider]);
 
   if (!isOpen) return null;
 
+  const handlePointerDownCapture = (e: React.PointerEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target && target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range') {
+      setIsDraggingSlider(true);
+    }
+  };
+
   return (
-    <aside className="control-panel-drawer" aria-label="Visualizer Studio Drawer">
+    <aside
+      className={`control-panel-drawer ${isDraggingSlider ? 'studio-dragging' : ''}`}
+      aria-label="Visualizer Studio Drawer"
+    >
       {/* Drawer Grabber Handle for mobile swipe feel */}
       <div className="drawer-drag-handle" onClick={onClose} title="Tap to close" />
 
@@ -101,7 +133,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         </button>
       </div>
 
-      <div className="panel-content">
+      <div className="panel-content" onPointerDownCapture={handlePointerDownCapture}>
         {/* TAB 1: STYLE & GEOMETRY */}
         {activeTab === 'style' && (
           <div className="tab-pane">
