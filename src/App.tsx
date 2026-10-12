@@ -8,6 +8,7 @@ import { CanvasRenderer } from './engine/canvasRenderer';
 import { AsciiRenderer } from './engine/asciiRenderer';
 import { WebGLParticleEngine } from './engine/webglEngine';
 import { Header } from './components/Header';
+import { CameraHUD } from './components/CameraHUD';
 import { ControlPanel } from './components/ControlPanel';
 import { DiagnosticsBar } from './components/DiagnosticsBar';
 import { PermissionsModal } from './components/Modals/PermissionsModal';
@@ -303,20 +304,8 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container" style={{ backgroundColor: config.backgroundColor }}>
-      {/* Top Navigation */}
+      {/* Floating Minimalist Top Bar */}
       <Header
-        currentMode={config.mode}
-        onModeChange={handleModeChange}
-        isStreaming={cameraStatus === 'active'}
-        onToggleCamera={() => {
-          if (cameraStatus === 'active') {
-            stopCamera();
-          } else {
-            startCamera();
-          }
-        }}
-        onUploadPhoto={() => fileInputRef.current?.click()}
-        onTakeSnapshot={handleTakeSnapshot}
         onOpenInfo={() => setIsInfoModalOpen(true)}
         isControlsOpen={isControlsOpen}
         onToggleControls={() => setIsControlsOpen((prev) => !prev)}
@@ -410,7 +399,23 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* Control Drawer */}
+        {/* Floating Bottom Camera HUD (Lens Carousel + Tactile Shutter) */}
+        <CameraHUD
+          currentMode={config.mode}
+          onModeChange={handleModeChange}
+          isStreaming={cameraStatus === 'active'}
+          onToggleCamera={() => {
+            if (cameraStatus === 'active') {
+              stopCamera();
+            } else {
+              startCamera();
+            }
+          }}
+          onUploadPhoto={() => fileInputRef.current?.click()}
+          onTakeSnapshot={handleTakeSnapshot}
+        />
+
+        {/* Control Drawer / Bottom Sheet */}
         <ControlPanel
           config={config}
           onChange={handleConfigChange}
@@ -423,7 +428,7 @@ export const App: React.FC = () => {
         />
       </main>
 
-      {/* Bottom Telemetry Bar */}
+      {/* Floating HUD Badge Telemetry */}
       <DiagnosticsBar stats={stats} config={config} />
 
       {/* App Modals */}

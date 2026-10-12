@@ -39,32 +39,35 @@ body {
   transition: background-color 0.3s ease;
 }
 
-/* Header */
-/* Header - Mobile First, Compact & Non-Intrusive */
-.app-header {
-  height: 52px;
+/* -------------------------------------------------------------
+   CAMERA HUD ARCHITECTURE (MOBILE FIRST, IMMERSIVE CANVAS)
+   ------------------------------------------------------------- */
+
+/* 1. Ultra-Clean Floating Top Bar */
+.hud-top-bar {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  right: 14px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background: rgba(7, 9, 19, 0.78);
+  z-index: 40;
+  pointer-events: none; /* Let touches bleed through except on interactive pills */
+}
+
+.hud-brand-pill {
+  pointer-events: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(7, 9, 19, 0.72);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--glass-border);
-  z-index: 40;
-  gap: 8px;
-}
-
-.header-brand-wrap {
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.logo-badge {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  border: 1px solid var(--glass-border);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
 }
 
 .logo-pulse {
@@ -82,7 +85,7 @@ body {
 }
 
 .app-title {
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 1.5px;
   background: linear-gradient(135deg, #00ffcc 0%, #38bdf8 50%, #ff007f 100%);
@@ -94,40 +97,116 @@ body {
 .version-pill {
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  padding: 1px 5px;
+  padding: 1px 6px;
   border-radius: 999px;
   background: rgba(0, 255, 204, 0.12);
   color: var(--color-primary);
   border: 1px solid rgba(0, 255, 204, 0.25);
 }
 
-/* Mode Switcher Pills - Touch-scrollable on mobile */
-.mode-toggle-group {
+.hud-top-actions {
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  background: rgba(0, 0, 0, 0.45);
+  gap: 8px;
+}
+
+.hud-circle-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: rgba(7, 9, 19, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #94a3b8;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  touch-action: manipulation;
+}
+
+.hud-circle-btn:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--glass-border-hover);
+}
+
+.hud-studio-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(7, 9, 19, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #38bdf8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.35);
+  touch-action: manipulation;
+}
+
+.hud-studio-pill:hover,
+.hud-studio-pill.active {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(56, 189, 248, 0.6);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+/* 2. Floating Bottom Camera HUD (Lens Carousel + Tactile Shutter) */
+.camera-hud-bottom {
+  position: absolute;
+  bottom: 18px;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  z-index: 35;
+  pointer-events: none;
+}
+
+/* Lens Carousel */
+.lens-carousel {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  background: rgba(7, 9, 19, 0.78);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border);
   border-radius: 999px;
-  padding: 2px 3px;
-  gap: 2px;
+  padding: 4px;
+  gap: 3px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+  max-width: calc(100vw - 28px);
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  max-width: 100%;
 }
 
-.mode-toggle-group::-webkit-scrollbar {
+.lens-carousel::-webkit-scrollbar {
   display: none;
 }
 
-.mode-btn {
+.lens-pill {
   border: none;
   background: transparent;
   color: #94a3b8;
   font-family: var(--font-sans);
-  font-size: 0.76rem;
+  font-size: 0.78rem;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 6px 14px;
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
@@ -135,118 +214,105 @@ body {
   touch-action: manipulation;
 }
 
-.mode-btn:hover {
+.lens-pill:hover {
   color: #f1f5f9;
   background: rgba(255, 255, 255, 0.06);
 }
 
-.mode-btn.active {
-  background: linear-gradient(135deg, rgba(0, 255, 204, 0.25), rgba(56, 189, 248, 0.25));
+.lens-pill.active {
+  background: linear-gradient(135deg, rgba(0, 255, 204, 0.3), rgba(56, 189, 248, 0.3));
   color: #00ffcc;
-  box-shadow: 0 0 10px rgba(0, 255, 204, 0.25);
+  box-shadow: 0 0 12px rgba(0, 255, 204, 0.3);
   border: 1px solid rgba(0, 255, 204, 0.45);
 }
 
-.header-actions {
+/* Bottom Tactile Shutter Row */
+.shutter-action-row {
+  pointer-events: auto;
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 0;
+  justify-content: center;
+  gap: 22px;
 }
 
-/* Compact Buttons for Mobile Header */
-.action-btn-compact {
-  display: inline-flex;
+.hud-thumb-btn {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 5px;
-  height: 34px;
-  padding: 0 10px;
-  border-radius: 8px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(7, 9, 19, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.06);
   color: #f1f5f9;
-  transition: all 0.18s ease;
-  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
   touch-action: manipulation;
 }
 
-.action-btn-compact:hover {
+.hud-thumb-btn:hover {
   background: rgba(255, 255, 255, 0.12);
-  border-color: var(--glass-border-hover);
+  transform: scale(1.05);
 }
 
-.action-btn-compact.btn-active {
-  background: rgba(16, 185, 129, 0.18);
+.hud-thumb-btn.btn-live {
   color: #34d399;
-  border-color: rgba(16, 185, 129, 0.45);
+  border-color: rgba(52, 211, 153, 0.4);
 }
 
-.action-btn-compact.btn-warn {
-  background: rgba(239, 68, 68, 0.16);
+.hud-thumb-btn.btn-off {
   color: #f87171;
-  border-color: rgba(239, 68, 68, 0.35);
+  border-color: rgba(248, 113, 113, 0.4);
 }
 
-.action-btn-compact.btn-highlight {
-  background: linear-gradient(135deg, #00ffcc, #38bdf8);
-  color: #050508;
-  border: none;
+.thumb-label {
+  font-size: 0.62rem;
   font-weight: 700;
-  box-shadow: 0 0 12px rgba(0, 255, 204, 0.35);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 1px;
 }
 
-.action-btn-compact.btn-highlight:hover {
-  filter: brightness(1.15);
-}
-
-.action-btn-compact.btn-studio {
-  background: rgba(255, 255, 255, 0.08);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.3);
-}
-
-.action-btn-compact.btn-studio-active {
-  background: rgba(56, 189, 248, 0.22);
-  color: #38bdf8;
-  border-color: rgba(56, 189, 248, 0.55);
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
-}
-
-/* Action Buttons */
-.action-btn {
+/* Big Tactile Camera Shutter Button */
+.shutter-button {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  border: 3px solid #f1f5f9;
+  padding: 4px;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 7px 14px;
-  border-radius: 9px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1px solid var(--glass-border);
-  background: rgba(255, 255, 255, 0.06);
-  color: #f1f5f9;
-  transition: all 0.2s ease;
+  justify-content: center;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 255, 204, 0.25);
+  transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  touch-action: manipulation;
 }
 
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: var(--glass-border-hover);
+.shutter-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00ffcc, #38bdf8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #050508;
+  transition: transform 0.15s ease;
 }
 
-.action-btn.btn-active {
-  background: rgba(16, 185, 129, 0.18);
-  color: #34d399;
-  border-color: rgba(16, 185, 129, 0.4);
+.shutter-button:hover {
+  transform: scale(1.06);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.7), 0 0 28px rgba(0, 255, 204, 0.5);
 }
 
-.action-btn.btn-warn {
-  background: rgba(239, 68, 68, 0.18);
-  color: #f87171;
-  border-color: rgba(239, 68, 68, 0.4);
+.shutter-button:active .shutter-inner {
+  transform: scale(0.9);
 }
 
 .action-btn.btn-highlight {
@@ -1131,14 +1197,19 @@ body {
     display: none !important;
   }
 
-  .app-header {
-    height: 48px;
-    padding: 0 10px;
+  .hud-top-bar {
+    top: 10px;
+    left: 10px;
+    right: 10px;
+  }
+
+  .hud-brand-pill {
+    padding: 5px 12px;
     gap: 6px;
   }
 
   .app-title {
-    font-size: 0.88rem;
+    font-size: 0.85rem;
     letter-spacing: 1px;
   }
 
@@ -1146,31 +1217,49 @@ body {
     display: none;
   }
 
-  /* Mode switcher pills scroll horizontally cleanly on mobile */
-  .mode-toggle-group {
-    display: flex !important;
-    max-width: calc(100vw - 190px);
-    padding: 2px;
+  .hud-circle-btn {
+    width: 34px;
+    height: 34px;
   }
 
-  .mode-btn {
+  .hud-studio-pill {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 0.78rem;
+  }
+
+  /* Bottom Camera HUD */
+  .camera-hud-bottom {
+    bottom: 12px;
+    gap: 10px;
+  }
+
+  .lens-carousel {
+    max-width: calc(100vw - 20px);
+    padding: 3px;
+  }
+
+  .lens-pill {
     font-size: 0.72rem;
-    padding: 3px 8px;
+    padding: 5px 11px;
   }
 
-  .action-btn-compact {
-    height: 32px;
-    padding: 0 8px;
-    font-size: 0.74rem;
+  .shutter-action-row {
+    gap: 18px;
   }
 
-  .compact-label {
-    display: inline;
+  .shutter-button {
+    width: 62px;
+    height: 62px;
   }
 
-  .action-icon-btn {
-    width: 32px;
-    height: 32px;
+  .hud-thumb-btn {
+    width: 44px;
+    height: 44px;
+  }
+
+  .thumb-label {
+    font-size: 0.58rem;
   }
 
   /* Control Panel Transforms into a Bottom Sheet Drawer */
@@ -1216,7 +1305,8 @@ body {
 
   /* Floating HUD badge stays elevated above bottom sheet trigger */
   .floating-hud-badge {
-    bottom: 10px;
+    bottom: auto;
+    top: 56px;
     left: 10px;
     font-size: 0.68rem;
     padding: 4px 10px;
