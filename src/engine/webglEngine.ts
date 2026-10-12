@@ -23,6 +23,8 @@ uniform bool u_removeBackground;
 uniform float u_bgRemovalThreshold;
 uniform int u_bgRemovalMode;
 uniform vec2 u_subjectCentroid;
+uniform vec2 u_uvScale;
+uniform vec2 u_uvOffset;
 uniform int u_renderMode;   // 0: particle, 1: ascii, 2: ring, 3: square, 4: halftone, 5: matrix
 uniform float u_depth3D;
 uniform float u_brightness;
@@ -39,7 +41,9 @@ varying vec2 v_texCoord;
 varying float v_random;
 
 void main() {
-  vec2 uv = a_texCoord;
+  // Correct aspect ratio via object-fit: cover mapping
+  vec2 uv = a_texCoord * u_uvScale + u_uvOffset;
+
   if (u_mirror) {
     uv.x = 1.0 - uv.x;
   }
@@ -334,6 +338,8 @@ export class WebGLParticleEngine {
       'u_bgRemovalThreshold',
       'u_bgRemovalMode',
       'u_subjectCentroid',
+      'u_uvScale',
+      'u_uvOffset',
     ];
     for (const name of uList) {
       this.uniforms[name] = gl.getUniformLocation(this.program, name);
@@ -627,6 +633,35 @@ export class WebGLParticleEngine {
     if (config.bgRemovalMode === 'luminance') bgModeVal = 1;
     else if (config.bgRemovalMode === 'chroma') bgModeVal = 2;
     gl.uniform1i(this.uniforms['u_bgRemovalMode'], bgModeVal);
+
+    // Aspect Ratio Preservation (object-fit: cover)
+    // Ensures camera video is never stretched or squashed horizontally or vertically
+    const isVideo = source instanceof HTMLVideoElement;
+    const srcW = isVideo ? source.videoWidth : source.naturalWidth;
+    const srcH = isVideo ? source.videoHeight : source.naturalHeight;
+
+    let uvScaleX = 1.0;
+    let uvScaleY = 1.0;
+    let uvOffsetX = 0.0;
+    let uvOffsetY = 0.0;
+
+    if (srcW > 0 && srcH > 0 && width > 0 && height > 0) {
+      const srcAspect = srcW / srcH;
+      const canvasAspect = width / height;
+
+      if (srcAspect > canvasAspect) {
+        // Source video is wider than viewport canvas: crop horizontal edges to avoid squashing
+        uvScaleX = canvasAspect / srcAspect;
+        uvOffsetX = (1.0 - uvScaleX) * 0.5;
+      } else {
+        // Source video is taller than viewport canvas: crop vertical edges to avoid stretching
+        uvScaleY = srcAspect / canvasAspect;
+        uvOffsetY = (1.0 - uvScaleY) * 0.5;
+      }
+    }
+
+    gl.uniform2f(this.uniforms['u_uvScale'], uvScaleX, uvScaleY);
+    gl.uniform2f(this.uniforms['u_uvOffset'], uvOffsetX, uvOffsetY);
 
     // Centroid normalized in UV space [0.0 to 1.0] (default to human face center: x=0.5, y=0.45)
     const normCentroidX = centroid ? Math.max(0.0, Math.min(1.0, centroid.x / width)) : 0.5;
