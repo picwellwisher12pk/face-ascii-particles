@@ -45,8 +45,8 @@ export const Header: React.FC<HeaderProps> = ({
           title="Open Visualizer Studio"
           aria-label="Studio Controls"
         >
-          <Sliders size={15} />
-          <span>Studio</span>
+          <Sliders size={16} />
+          <span className="studio-label">Studio</span>
         </button>
 
         {/* Info & Guide */}

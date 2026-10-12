@@ -12,6 +12,7 @@ import {
   X,
   Cpu,
   Scissors,
+  Palette,
 } from 'lucide-react';
 
 interface ControlPanelProps {
@@ -61,36 +62,42 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
         <button
           className={`panel-tab ${activeTab === 'style' ? 'active' : ''}`}
           onClick={() => setActiveTab('style')}
+          title="Style"
         >
-          <Layers size={14} />
-          <span>Style</span>
+          <Layers size={16} />
+          <span className="tab-label">Style</span>
         </button>
         <button
           className={`panel-tab ${activeTab === 'isolate' ? 'active' : ''}`}
           onClick={() => setActiveTab('isolate')}
+          title="Isolate"
         >
-          <Scissors size={14} />
-          <span>Isolate</span>
+          <Scissors size={16} />
+          <span className="tab-label">Isolate</span>
         </button>
         <button
           className={`panel-tab ${activeTab === 'colors' ? 'active' : ''}`}
           onClick={() => setActiveTab('colors')}
+          title="Colors"
         >
-          <span>Colors</span>
+          <Palette size={16} />
+          <span className="tab-label">Colors</span>
         </button>
         <button
           className={`panel-tab ${activeTab === 'camera' ? 'active' : ''}`}
           onClick={() => setActiveTab('camera')}
+          title="Camera"
         >
-          <Camera size={14} />
-          <span>Camera</span>
+          <Camera size={16} />
+          <span className="tab-label">Camera</span>
         </button>
         <button
           className={`panel-tab ${activeTab === 'physics' ? 'active' : ''}`}
           onClick={() => setActiveTab('physics')}
+          title="Dynamics"
         >
-          <Sparkles size={14} />
-          <span>Dynamics</span>
+          <Sparkles size={16} />
+          <span className="tab-label">Dynamics</span>
         </button>
       </div>
 

@@ -212,6 +212,15 @@ body {
   white-space: nowrap;
   transition: all 0.2s ease;
   touch-action: manipulation;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.lens-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .lens-pill:hover {
@@ -1223,43 +1232,61 @@ body {
   }
 
   .hud-studio-pill {
+    width: 34px;
     height: 34px;
-    padding: 0 12px;
-    font-size: 0.78rem;
+    padding: 0;
+    justify-content: center;
+    border-radius: 50%;
   }
 
-  /* Bottom Camera HUD */
+  .studio-label {
+    display: none;
+  }
+
+  /* Bottom Camera HUD - Icons Only */
   .camera-hud-bottom {
-    bottom: 12px;
-    gap: 10px;
+    bottom: 14px;
+    gap: 12px;
   }
 
   .lens-carousel {
-    max-width: calc(100vw - 20px);
-    padding: 3px;
+    max-width: calc(100vw - 24px);
+    padding: 4px;
+    gap: 4px;
   }
 
   .lens-pill {
-    font-size: 0.72rem;
-    padding: 5px 11px;
+    padding: 8px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    justify-content: center;
+  }
+
+  .lens-label {
+    display: none;
   }
 
   .shutter-action-row {
-    gap: 18px;
+    gap: 24px;
   }
 
   .shutter-button {
-    width: 62px;
-    height: 62px;
+    width: 66px;
+    height: 66px;
   }
 
   .hud-thumb-btn {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
   }
 
   .thumb-label {
-    font-size: 0.58rem;
+    display: none;
+  }
+
+  .tab-label {
+    display: none;
   }
 
   /* Control Panel Transforms into a Bottom Sheet Drawer */
