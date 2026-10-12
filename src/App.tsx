@@ -131,8 +131,49 @@ export const App: React.FC = () => {
     }
   };
 
-  // Pointer event listeners for interactive physics
+  // Multi-touch gestures for smooth pinch-to-zoom & reverse-pinch zoom
+  const activePointers = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const initialPinchDist = useRef<number | null>(null);
+  const initialPinchZoom = useRef<number>(1.0);
+
+  // Pointer event listeners for interactive physics & pinch-to-zoom
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (activePointers.current.size === 2) {
+      // Two fingers on screen -> initialize pinch gesture
+      const points = Array.from(activePointers.current.values());
+      const dx = points[0].x - points[1].x;
+      const dy = points[0].y - points[1].y;
+      initialPinchDist.current = Math.hypot(dx, dy);
+      initialPinchZoom.current = config.zoom;
+      // Clear single-pointer mouse physics to prevent repulsion distortion while pinching
+      mouseCoords.current = { x: null, y: null };
+    }
+  };
+
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointers.current.has(e.pointerId)) {
+      activePointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    }
+
+    if (activePointers.current.size >= 2 && initialPinchDist.current !== null) {
+      // Perform genuine two-finger pinch-to-zoom computation
+      const points = Array.from(activePointers.current.values());
+      const dx = points[0].x - points[1].x;
+      const dy = points[0].y - points[1].y;
+      const currentDist = Math.hypot(dx, dy);
+
+      if (initialPinchDist.current > 0) {
+        const scaleRatio = currentDist / initialPinchDist.current;
+        const newZoom = Math.min(3.5, Math.max(1.0, initialPinchZoom.current * scaleRatio));
+        handleConfigChange({ zoom: Number(newZoom.toFixed(2)) });
+      }
+      mouseCoords.current = { x: null, y: null };
+      return;
+    }
+
+    // Single finger or mouse pointer -> repel particles
     const activeCanvas = config.engineType === 'webgl' ? webglCanvasRef.current : canvasRef.current;
     if (!activeCanvas) return;
     const rect = activeCanvas.getBoundingClientRect();
@@ -145,8 +186,33 @@ export const App: React.FC = () => {
     };
   };
 
-  const handlePointerLeave = () => {
-    mouseCoords.current = { x: null, y: null };
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.delete(e.pointerId);
+    if (activePointers.current.size < 2) {
+      initialPinchDist.current = null;
+    }
+    if (activePointers.current.size === 0) {
+      mouseCoords.current = { x: null, y: null };
+    }
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    activePointers.current.delete(e.pointerId);
+    if (activePointers.current.size < 2) {
+      initialPinchDist.current = null;
+    }
+    if (activePointers.current.size === 0) {
+      mouseCoords.current = { x: null, y: null };
+    }
+  };
+
+  // Optional mouse wheel zoom support for desktop users
+  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
+    if (e.ctrlKey || e.metaKey || true) {
+      const delta = -e.deltaY * 0.002;
+      const nextZoom = Math.min(3.5, Math.max(1.0, config.zoom + delta));
+      handleConfigChange({ zoom: Number(nextZoom.toFixed(2)) });
+    }
   };
 
   // File upload handler
@@ -311,6 +377,8 @@ export const App: React.FC = () => {
         onToggleControls={() => setIsControlsOpen((prev) => !prev)}
         isFullscreen={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
+        zoom={config.zoom}
+        onResetZoom={() => handleConfigChange({ zoom: 1.0 })}
       />
 
       {/* Hidden File Input for Real Photo Upload */}
@@ -328,15 +396,23 @@ export const App: React.FC = () => {
           ref={webglCanvasRef}
           className="visualizer-canvas"
           style={{ display: config.engineType === 'webgl' ? 'block' : 'none' }}
+          onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           onPointerLeave={handlePointerLeave}
+          onWheel={handleWheel}
         />
         <canvas
           ref={canvasRef}
           className="visualizer-canvas"
           style={{ display: config.engineType === 'canvas2d' ? 'block' : 'none' }}
+          onPointerDown={handlePointerDown}
           onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
           onPointerLeave={handlePointerLeave}
+          onWheel={handleWheel}
         />
 
         {/* Camera Permission / Standby Overlay */}

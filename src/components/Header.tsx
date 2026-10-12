@@ -8,6 +8,8 @@ interface HeaderProps {
   onToggleControls: () => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
+  zoom?: number;
+  onResetZoom?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -16,6 +18,8 @@ export const Header: React.FC<HeaderProps> = ({
   onToggleControls,
   isFullscreen,
   onToggleFullscreen,
+  zoom = 1.0,
+  onResetZoom,
 }) => {
   return (
     <header className="hud-top-bar" aria-label="Application Top Bar">
@@ -24,6 +28,16 @@ export const Header: React.FC<HeaderProps> = ({
         <span className="logo-pulse" />
         <span className="app-title">FACE ART</span>
         <span className="version-pill">v{APP_VERSION}</span>
+        {zoom > 1.05 && (
+          <button
+            className="hud-zoom-badge"
+            onClick={onResetZoom}
+            title="Pinch to zoom active. Tap to reset to 1.0x"
+            aria-label={`Current Zoom ${zoom.toFixed(1)}x. Tap to reset.`}
+          >
+            {zoom.toFixed(1)}x ↺
+          </button>
+        )}
       </div>
 
       {/* Floating Action Buttons */}

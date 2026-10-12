@@ -506,12 +506,15 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
               <input
                 type="range"
                 min={1.0}
-                max={2.2}
+                max={3.5}
                 step={0.05}
                 value={config.zoom}
                 onChange={(e) => onChange({ zoom: Number(e.target.value) })}
                 className="custom-range"
               />
+              <span className="helper-text">
+                Pinch screen with two fingers or roll mouse wheel to smoothly zoom in & out.
+              </span>
             </div>
 
             <div className="toggle-row">
