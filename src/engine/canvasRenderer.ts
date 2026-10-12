@@ -209,19 +209,69 @@ export class CanvasRenderer {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    const matrixChars = '0123456789ABCDEFｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ';
-    const now = performance.now() / 150;
+    const matrixChars = 'ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789:・."=*+-<>';
+    const nowSec = performance.now() / 1000.0;
+    const step = Math.max(3, config.samplingDensity);
 
     for (let i = 0; i < points.length; i++) {
       const pt = points[i];
-      if (pt.brightness < 20) continue;
+      const faceLum = pt.brightness / 255.0;
 
-      // Authentic pseudo-random glyph jitter based on time and location
-      const charIdx = Math.floor(Math.abs(Math.sin(pt.x * 13 + pt.y * 7 + now)) * matrixChars.length);
+      // Determine discrete column and row
+      const col = Math.floor(pt.x / step);
+      const row = Math.floor(pt.y / step);
+
+      // Pseudo-random speed, phase offset, and trail length per column
+      const speedHash = Math.abs(Math.sin(col * 17.382 + 5.12));
+      const offsetHash = Math.abs(Math.sin(col * 93.123 + 12.98));
+      const trailHash = Math.abs(Math.sin(col * 41.517 + 8.76));
+
+      const dropSpeed = 12.0 + speedHash * 22.0;       // 12 to 34 rows per second
+      const trailLength = 8.0 + trailHash * 18.0;      // 8 to 26 characters trail
+      const loopSpan = 60.0 + trailLength + 10.0;
+
+      const dropHead = (nowSec * dropSpeed + offsetHash * loopSpan) % loopSpan;
+      const distBehind = dropHead - (row % 60.0);
+
+      let isHead = false;
+      let rainIntensity = 0.0;
+
+      if (distBehind >= 0.0 && distBehind < 1.0) {
+        isHead = true;
+        rainIntensity = 1.0;
+      } else if (distBehind >= 1.0 && distBehind < trailLength) {
+        const trailProgress = (distBehind - 1.0) / (trailLength - 1.0);
+        rainIntensity = Math.pow(1.0 - trailProgress, 1.55);
+      }
+
+      // Visibility blends rain drops with authentic facial contours
+      const totalVisibility = Math.max(rainIntensity, faceLum * 0.88);
+      if (totalVisibility < 0.08) continue;
+
+      // Authentic glyph cycling as rain cascades
+      const glyphChangeRate = Math.floor(nowSec * 9.0 + (col * 31.7) % 50.0);
+      const charIdx = Math.floor(Math.abs(glyphChangeRate + row * 3.0 + col * 7.0)) % matrixChars.length;
       const char = matrixChars[charIdx] || '0';
 
-      ctx.fillStyle = getColor(pt.r, pt.g, pt.b, pt.brightness);
+      if (isHead) {
+        // Glowing white tip
+        ctx.fillStyle = `rgba(240, 255, 245, ${Math.min(1.0, totalVisibility * 1.2)})`;
+      } else {
+        // Authentic matrix green palette (#00ff66 fading to deep dark green)
+        const gVal = Math.floor(65 + rainIntensity * 190);
+        const rVal = faceLum > 0.4 ? Math.floor((faceLum - 0.4) * 160) : 0;
+        const bVal = faceLum > 0.4 ? Math.floor((faceLum - 0.4) * 180) : Math.floor(rainIntensity * 40);
+        const alpha = Math.min(1.0, Math.max(0.2, totalVisibility * 1.15));
+
+        if (config.colorMode === 'source') {
+          ctx.fillStyle = `rgba(${rVal}, ${gVal}, ${bVal}, ${alpha})`;
+        } else {
+          ctx.fillStyle = getColor(pt.r, pt.g, pt.b, pt.brightness);
+        }
+      }
+
       ctx.fillText(char, pt.x, pt.y);
     }
   }
 }
+

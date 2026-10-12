@@ -272,7 +272,7 @@ export const ControlPanel: React.FC<ControlPanelProps> = ({
                     <option value="standard">Standard (@%#*+=-:. )</option>
                     <option value="dense">Ultra Dense HD</option>
                     <option value="blocks">Solid Blocks (█▓▒░ )</option>
-                    <option value="matrix">Binary Code (01)</option>
+                    <option value="matrix">Matrix Digital Katakana (ｦｱｳ...)</option>
                     <option value="cyber">Cyber Hex (0-9, A-F)</option>
                     <option value="runes">Geometric Runes (⚡✦★※▲)</option>
                   </select>

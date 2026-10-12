@@ -4,7 +4,7 @@ export const CHARSETS = {
   standard: '@%#*+=-:. ',
   dense: '$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\\|()1{}[]?-_+~<>i!lI;:,"^`\'. ',
   blocks: '█▓▒░ ',
-  matrix: '01',
+  matrix: 'ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789:・."=*+-<>',
   cyber: '0123456789ABCDEF',
   minimal: '.:*#@',
   runes: '⚡✦★※▲■◆●',

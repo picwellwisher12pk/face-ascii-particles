@@ -6,13 +6,14 @@ const VS_SOURCE = `
 precision highp float;
 precision highp int;
 
-attribute vec2 a_position; // Randomized base pos: -1.0 to 1.0
-attribute vec2 a_texCoord; // UV pos: 0.0 to 1.0
-attribute float a_random;  // Pseudo-random seed 0.0 to 1.0
+attribute vec2 a_position;  // Base pos: -1.0 to 1.0 (with jitter for particles)
+attribute vec2 a_texCoord;  // UV pos: 0.0 to 1.0
+attribute float a_random;   // Pseudo-random seed 0.0 to 1.0
+attribute vec2 a_gridCoord; // Discrete column and row: x=col, y=row
 
 uniform sampler2D u_videoTexture;
 uniform vec2 u_resolution;
-uniform vec2 u_mouse;      // in screen pixels, -1 if inactive
+uniform vec2 u_mouse;       // in screen pixels, -1 if inactive
 uniform float u_mouseRadius;
 uniform float u_mouseStrength;
 uniform float u_particleSize;
@@ -25,7 +26,7 @@ uniform int u_bgRemovalMode;
 uniform vec2 u_subjectCentroid;
 uniform vec2 u_uvScale;
 uniform vec2 u_uvOffset;
-uniform int u_renderMode;   // 0: particle, 1: ascii, 2: ring, 3: square, 4: halftone, 5: matrix
+uniform int u_renderMode;    // 0: particle, 1: ascii, 2: ring, 3: square, 4: halftone, 5: matrix
 uniform float u_depth3D;
 uniform float u_brightness;
 uniform float u_contrast;
@@ -39,6 +40,7 @@ varying vec4 v_color;
 varying float v_brightness;
 varying vec2 v_texCoord;
 varying float v_random;
+varying vec2 v_gridCoord;
 
 void main() {
   // Correct aspect ratio via object-fit: cover mapping
@@ -67,6 +69,7 @@ void main() {
   v_color = vec4(rgb, srcColor.a);
   v_texCoord = a_texCoord;
   v_random = a_random;
+  v_gridCoord = a_gridCoord;
 
   // Threshold cutoff
   if (lum < (u_threshold / 255.0)) {
@@ -107,8 +110,8 @@ void main() {
 
   vec2 pos = a_position;
 
-  // Organic micro-drift / floating jitter to break up any linearity
-  if (u_floatJitter > 0.0) {
+  // In Matrix mode, keep characters in pristine aligned vertical columns like movie/screensaver
+  if (u_renderMode != 5 && u_floatJitter > 0.0) {
     float driftAngle = a_random * 6.28318 + u_time * 1.5;
     vec2 drift = vec2(cos(driftAngle), sin(driftAngle)) * (u_floatJitter * 0.006);
     pos += drift;
@@ -139,9 +142,13 @@ void main() {
   // Dynamic point size scaling based on authentic luminance and u_sizeVariation across ALL modes
   float dynamicScale = mix(1.0, clamp(lum * 2.4, 0.18, 2.6), u_sizeVariation * 0.6);
 
-  if (u_renderMode == 1 || u_renderMode == 5) {
-    // ASCII or Matrix Mode: font glyph size varies dynamically with brightness
+  if (u_renderMode == 1) {
+    // ASCII Mode: font glyph size varies dynamically with brightness
     gl_PointSize = max(8.0, u_fontSize * dynamicScale / pZ);
+  } else if (u_renderMode == 5) {
+    // Matrix Mode: uniform monospace rain grid sizing with slight facial relief
+    float matrixScale = mix(0.9, 1.15, clamp(lum, 0.0, 1.0));
+    gl_PointSize = max(8.0, u_fontSize * matrixScale / pZ);
   } else if (u_renderMode == 4) {
     // Halftone Mode: dot size varies dramatically with luminance
     gl_PointSize = max(2.5, u_particleSize * 3.4 * u_halftoneScale * dynamicScale / pZ);
@@ -156,29 +163,40 @@ const FS_SOURCE = `
 precision highp float;
 precision highp int;
 
-uniform int u_renderMode;    // 0: particle, 1: ascii, 2: ring, 3: square, 4: halftone, 5: matrix
+uniform int u_renderMode;       // 0: particle, 1: ascii, 2: ring, 3: square, 4: halftone, 5: matrix
 uniform int u_halftoneDotShape; // 0: circle, 1: diamond, 2: line, 3: square, 4: ring
 uniform float u_halftoneAngle;   // radians
-uniform float u_halftoneSoftness; // 0.0 to 0.5
-uniform int u_colorMode;     // 0: source, 1: custom, 2: theme
-uniform vec3 u_customColor;  // RGB 0-1
-uniform vec3 u_themePrimary; // RGB 0-1
-uniform vec3 u_themeSecondary;// RGB 0-1
+uniform float u_halftoneSoftness;// 0.0 to 0.5
+uniform int u_colorMode;        // 0: source, 1: custom, 2: theme
+uniform vec3 u_customColor;     // RGB 0-1
+uniform vec3 u_themePrimary;    // RGB 0-1
+uniform vec3 u_themeSecondary;  // RGB 0-1
 uniform bool u_invert;
 uniform bool u_charGlow;
 uniform sampler2D u_asciiAtlas;
 uniform float u_atlasCharsCount;
 uniform float u_time;
+uniform vec2 u_gridDimensions;  // totalCols, totalRows
 
 varying vec4 v_color;
 varying float v_brightness;
 varying vec2 v_texCoord;
 varying float v_random;
+varying vec2 v_gridCoord;
+
+// Pseudo-random helper for column characteristics
+float hash11(float p) {
+  p = fract(p * 0.1031);
+  p *= p + 33.33;
+  p *= p + p;
+  return fract(p);
+}
 
 void main() {
   vec2 coord = gl_PointCoord - vec2(0.5);
   float dist = length(coord);
   float alpha = 1.0;
+  vec3 outColor = v_color.rgb;
 
   if (u_renderMode == 0) {
     // Smooth Circular Particle
@@ -241,27 +259,89 @@ void main() {
     if (glyph.a < 0.25) discard;
     alpha = glyph.a;
   } else if (u_renderMode == 5) {
-    // Matrix Mode: animated digital streaming glyphs
-    float flicker = mod(v_random * 100.0 + u_time * 4.0, u_atlasCharsCount);
-    float charIndex = floor(flicker);
-    
+    // Matrix Mode: Authentic Matrix Digital Rain simulation
+    float col = v_gridCoord.x;
+    float row = v_gridCoord.y;
+    float totalRows = max(1.0, u_gridDimensions.y);
+
+    // Each column has unique downward fall speed, offset phase, and trail length
+    float speedHash = hash11(col * 17.382 + 5.12);
+    float offsetHash = hash11(col * 93.123 + 12.98);
+    float trailHash = hash11(col * 41.517 + 8.76);
+
+    float dropSpeed = 12.0 + speedHash * 22.0;       // 12 to 34 rows per second
+    float trailLength = 8.0 + trailHash * 18.0;      // 8 to 26 characters trail
+    float loopSpan = totalRows + trailLength + 10.0;
+
+    // Current downward position of the drop head
+    float dropHead = mod(u_time * dropSpeed + offsetHash * loopSpan, loopSpan);
+
+    // Distance of this row behind the falling drop head
+    float distBehind = dropHead - row;
+
+    // Authentic glyph cycling: changes rapidly as the rain cascades
+    float glyphChangeRate = floor(u_time * 9.0 + v_random * 50.0);
+    float charIndex = floor(mod(glyphChangeRate + row * 3.0 + col * 7.0, u_atlasCharsCount));
+
     float charW = 1.0 / u_atlasCharsCount;
     vec2 atlasUV = vec2((charIndex + gl_PointCoord.x) * charW, gl_PointCoord.y);
     vec4 glyph = texture2D(u_asciiAtlas, atlasUV);
-    if (glyph.a < 0.25) discard;
-    alpha = glyph.a;
+    if (glyph.a < 0.22) discard;
+
+    // Authentic face luminance modulation
+    // Facial highlights illuminate the rain stream and reveal the user's facial contours
+    float faceLum = clamp(v_brightness, 0.0, 1.0);
+
+    float rainIntensity = 0.0;
+    bool isHead = false;
+
+    if (distBehind >= 0.0 && distBehind < 1.0) {
+      // The leading glyph at the head of the drop
+      isHead = true;
+      rainIntensity = 1.0;
+    } else if (distBehind >= 1.0 && distBehind < trailLength) {
+      // Fading phosphor tail behind the head
+      float trailProgress = (distBehind - 1.0) / (trailLength - 1.0);
+      rainIntensity = pow(1.0 - trailProgress, 1.55);
+    }
+
+    // Blend the cascading rain intensity with authentic face contours
+    // In dark camera areas: only rain drops are faintly visible
+    // In bright face areas: the matrix rain illuminates and reveals facial contours vividly
+    float totalVisibility = max(rainIntensity, faceLum * 0.88);
+
+    if (totalVisibility < 0.08) discard;
+
+    alpha = glyph.a * clamp(totalVisibility * 1.25, 0.15, 1.0);
+
+    if (isHead) {
+      // Glowing pure white / faint emerald tip
+      outColor = vec3(0.92, 1.0, 0.94);
+    } else {
+      // Authentic Matrix Phosphor Green Palette (#00ff66 fading to deep dark CRT green)
+      vec3 brightGreen = vec3(0.02, 1.0, 0.40);
+      vec3 deepGreen   = vec3(0.00, 0.26, 0.08);
+      vec3 phosphorColor = mix(deepGreen, brightGreen, rainIntensity);
+
+      // Modulate with face luminance highlights
+      if (faceLum > 0.4) {
+        phosphorColor = mix(phosphorColor, vec3(0.70, 1.0, 0.80), (faceLum - 0.4) * 1.2);
+      }
+      outColor = phosphorColor;
+    }
   }
 
-  // Resolve foreground color
-  vec3 outColor = v_color.rgb;
-  if (u_colorMode == 1) {
-    outColor = u_customColor;
-  } else if (u_colorMode == 2) {
-    outColor = mix(u_themeSecondary, u_themePrimary, v_brightness);
-  }
+  // Resolve foreground color for non-matrix modes or custom theme overrides
+  if (u_renderMode != 5) {
+    if (u_colorMode == 1) {
+      outColor = u_customColor;
+    } else if (u_colorMode == 2) {
+      outColor = mix(u_themeSecondary, u_themePrimary, v_brightness);
+    }
 
-  if (u_invert && u_colorMode == 0) {
-    outColor = 1.0 - outColor;
+    if (u_invert && u_colorMode == 0) {
+      outColor = 1.0 - outColor;
+    }
   }
 
   gl_FragColor = vec4(outColor, alpha);
@@ -276,8 +356,11 @@ export class WebGLParticleEngine {
   private positionBuffer: WebGLBuffer | null = null;
   private texCoordBuffer: WebGLBuffer | null = null;
   private randomBuffer: WebGLBuffer | null = null;
+  private gridCoordBuffer: WebGLBuffer | null = null;
   private vertexCount: number = 0;
   private currentGridStep: number = 0;
+  private currentCols: number = 0;
+  private currentRows: number = 0;
   private lastWidth: number = 0;
   private lastHeight: number = 0;
   private cachedCharset: string = '';
@@ -329,6 +412,7 @@ export class WebGLParticleEngine {
       'u_invert',
       'u_charGlow',
       'u_atlasCharsCount',
+      'u_gridDimensions',
       'u_halftoneScale',
       'u_halftoneDotShape',
       'u_halftoneAngle',
@@ -362,6 +446,7 @@ export class WebGLParticleEngine {
     this.positionBuffer = gl.createBuffer();
     this.texCoordBuffer = gl.createBuffer();
     this.randomBuffer = gl.createBuffer();
+    this.gridCoordBuffer = gl.createBuffer();
 
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -461,9 +546,13 @@ export class WebGLParticleEngine {
     const rows = Math.floor(height / step);
     const total = cols * rows;
 
+    this.currentCols = cols;
+    this.currentRows = rows;
+
     const positions = new Float32Array(total * 2);
     const texCoords = new Float32Array(total * 2);
     const randoms = new Float32Array(total);
+    const gridCoords = new Float32Array(total * 2);
 
     const stepNdcX = 2.0 / Math.max(1, cols - 1);
     const stepNdcY = 2.0 / Math.max(1, rows - 1);
@@ -494,6 +583,9 @@ export class WebGLParticleEngine {
 
         randoms[idx] = Math.random();
 
+        gridCoords[idx * 2] = c;
+        gridCoords[idx * 2 + 1] = r;
+
         idx++;
       }
     }
@@ -508,6 +600,9 @@ export class WebGLParticleEngine {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.randomBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, randoms, gl.STATIC_DRAW);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.gridCoordBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, gridCoords, gl.STATIC_DRAW);
   }
 
   /**
@@ -542,8 +637,9 @@ export class WebGLParticleEngine {
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 0);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source);
 
-    // Update ASCII font atlas
-    const atlasCount = this.updateAsciiAtlas(config.asciiCharset);
+    // Update ASCII font atlas: if in Matrix mode, use authentic Matrix half-width Katakana + code charset
+    const atlasCharset = config.mode === 'matrix-rain' ? 'ｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ0123456789:・."=*+-<>' : config.asciiCharset;
+    const atlasCount = this.updateAsciiAtlas(atlasCharset);
 
     // Bind ASCII Atlas
     gl.activeTexture(gl.TEXTURE1);
@@ -555,6 +651,7 @@ export class WebGLParticleEngine {
     gl.uniform1i(this.uniforms['u_videoTexture'], 0);
     gl.uniform1i(this.uniforms['u_asciiAtlas'], 1);
     gl.uniform2f(this.uniforms['u_resolution'], width, height);
+    gl.uniform2f(this.uniforms['u_gridDimensions'], this.currentCols, this.currentRows);
 
     if (mouseX !== null && mouseY !== null) {
       gl.uniform2f(this.uniforms['u_mouse'], mouseX, mouseY);
@@ -684,6 +781,13 @@ export class WebGLParticleEngine {
       gl.bindBuffer(gl.ARRAY_BUFFER, this.randomBuffer);
       gl.enableVertexAttribArray(aRand);
       gl.vertexAttribPointer(aRand, 1, gl.FLOAT, false, 0, 0);
+    }
+
+    const aGrid = gl.getAttribLocation(this.program, 'a_gridCoord');
+    if (aGrid !== -1) {
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.gridCoordBuffer);
+      gl.enableVertexAttribArray(aGrid);
+      gl.vertexAttribPointer(aGrid, 2, gl.FLOAT, false, 0, 0);
     }
 
     // Single GPU Draw Call
